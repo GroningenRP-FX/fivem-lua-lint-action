@@ -32,7 +32,6 @@ if [ "$LUACHECK_PATH" = "." ]; then
   VALID_FILES=""
 
   for file in $FILES; do
-    # Check first 4 bytes of file
     if ! head -c 4 "$file" | grep -q "FXAP"; then
       VALID_FILES="$VALID_FILES $file"
     else
@@ -44,18 +43,37 @@ if [ "$LUACHECK_PATH" = "." ]; then
 fi
 # ----------------------------------------
 
-if [ ! -z "$LUACHECK_CAPTURE_OUTFILE" ]; then
-  echo "exec => luacheck $LUACHECK_ARGS $LUACHECK_PATH 2>>$LUACHECK_CAPTURE_OUTFILE"
-  luacheck --operators "+=" $LUACHECK_ARGS $LUACHECK_PATH >"$LUACHECK_CAPTURE_OUTFILE" 2>&1 || true
+# ----------------------------------------
+# Run luacheck and capture output
+# ----------------------------------------
 
-  echo "exec => luacheck $LUACHECK_ARGS --formatter default $LUACHECK_PATH"
-  luacheck --operators "+=" $LUACHECK_ARGS --formatter default $LUACHECK_PATH || EXIT_CODE=$?
-else
-  echo "exec => luacheck $LUACHECK_ARGS $LUACHECK_PATH"
-  luacheck --operators "+=" $LUACHECK_ARGS $LUACHECK_PATH || EXIT_CODE=$?
+TMP_OUTPUT="$GITHUB_WORKSPACE/luacheck_output.txt"
+
+luacheck --operators "+=" $LUACHECK_ARGS --formatter plain --codes $LUACHECK_PATH >"$TMP_OUTPUT" 2>&1 || EXIT_CODE=$?
+
+# Print full luacheck output
+cat "$TMP_OUTPUT"
+
+echo ""
+echo "exit => $EXIT_CODE"
+
+# ----------------------------------------
+# Extra error block under summary
+# ----------------------------------------
+
+ERROR_LINES=$(grep -E ":[0-9]+:[0-9]+:" "$TMP_OUTPUT")
+
+if [ ! -z "$ERROR_LINES" ]; then
+  echo ""
+  echo "----------------------------------------"
+  echo "Errors:"
+  echo "$ERROR_LINES"
+  echo "----------------------------------------"
 fi
 
-echo "exit => $EXIT_CODE"
+# ----------------------------------------
+# Exit handling
+# ----------------------------------------
 
 if [ "$LUACHECK_EXIT_ON_WARN" = true ]; then
   exit $EXIT_CODE
