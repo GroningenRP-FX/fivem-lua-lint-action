@@ -51,23 +51,36 @@ TMP_OUTPUT="$GITHUB_WORKSPACE/luacheck_output.txt"
 
 luacheck --operators "+=" $LUACHECK_ARGS --formatter plain --codes $LUACHECK_PATH >"$TMP_OUTPUT" 2>&1 || EXIT_CODE=$?
 
-# Print full luacheck output
+# Print volledige luacheck output
 cat "$TMP_OUTPUT"
 
 echo ""
 echo "exit => $EXIT_CODE"
 
 # ----------------------------------------
-# Extra error block under summary
+# Extract error blocks
+# (Vanaf "Checking ... X error" tot volgende "Checking")
 # ----------------------------------------
 
-ERROR_LINES=$(grep -E ":[0-9]+:[0-9]+:" "$TMP_OUTPUT")
+ERROR_BLOCKS=$(awk '
+/^Checking .* [0-9]+ error/ {
+    capture=1
+    print
+    next
+}
+/^Checking/ {
+    capture=0
+}
+capture {
+    print
+}
+' "$TMP_OUTPUT")
 
-if [ ! -z "$ERROR_LINES" ]; then
+if [ ! -z "$ERROR_BLOCKS" ]; then
   echo ""
   echo "----------------------------------------"
   echo "Errors:"
-  echo "$ERROR_LINES"
+  echo "$ERROR_BLOCKS"
   echo "----------------------------------------"
 fi
 
