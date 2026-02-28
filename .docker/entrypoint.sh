@@ -96,24 +96,25 @@ if [ -f "$LUACHECK_CAPTURE_OUTFILE" ]; then
   # Repeat error blocks (max 20 lines per file)
   # ----------------------------------------
   ERROR_BLOCKS=$(awk '
-  /^Checking .* [0-9]+ error(s)?$/ {
-      capture=1
-      lines=0
-      print
-      next
-  }
+/^Checking .* [0-9]+ error/ {
+    if (capture) print ""
+    capture=1
+    lines=0
+    print
+    next
+}
 
-  /^Checking/ {
-      capture=0
-  }
+/^Checking/ {
+    capture=0
+}
 
-  capture {
-      if (lines < 20) {
-          print
-          lines++
-      }
-  }
-  ' "$CLEAN_FILE")
+capture {
+    if (lines < 20) {
+        print
+        lines++
+    }
+}
+' "$CLEAN_FILE")
 
   if [ ! -z "$ERROR_BLOCKS" ]; then
       echo ""
@@ -124,7 +125,7 @@ if [ -f "$LUACHECK_CAPTURE_OUTFILE" ]; then
 fi
 
 # ----------------------------------------
-# Exit handling (origineel gedrag behouden)
+# Exit handling
 # ----------------------------------------
 
 if [ "$LUACHECK_EXIT_ON_WARN" = true ]; then
