@@ -10,9 +10,9 @@ LUACHECK_EXIT_ON_WARN="$5"
 
 EXIT_CODE=0
 
-echo "Args => 1: $1, 2: $2, 3: $3, 4: $4, 5: $5, 6: $6, 7: $7"
+echo "Args => 1: $1, 2: $2, 3: $3, 4: $4, 5: $5, 6: $6"
 
-cd "$GITHUB_WORKSPACE"
+cd "$GITHUB_WORKSPACE" || exit 1
 
 echo "outfile => $LUACHECK_CAPTURE_OUTFILE"
 
@@ -48,22 +48,15 @@ fi
 # ----------------------------------------
 
 # ----------------------------------------
-# Run luacheck
+# Run luacheck ONCE (capture + console identical)
 # ----------------------------------------
 
-if [ ! -z "$LUACHECK_CAPTURE_OUTFILE" ]; then
-  echo "exec => luacheck $LUACHECK_ARGS $LUACHECK_PATH"
+echo "Running luacheck..."
 
-  luacheck --operators "+=" $LUACHECK_ARGS $LUACHECK_PATH >"$LUACHECK_CAPTURE_OUTFILE" 2>&1 || true
+luacheck --operators "+=" $LUACHECK_ARGS --formatter default $LUACHECK_PATH \
+  2>&1 | tee "$LUACHECK_CAPTURE_OUTFILE"
 
-  echo "exec => luacheck $LUACHECK_ARGS --formatter default $LUACHECK_PATH"
-
-  luacheck --operators "+=" $LUACHECK_ARGS --formatter default $LUACHECK_PATH || EXIT_CODE=$?
-else
-  echo "exec => luacheck $LUACHECK_ARGS $LUACHECK_PATH"
-
-  luacheck --operators "+=" $LUACHECK_ARGS $LUACHECK_PATH || EXIT_CODE=$?
-fi
+EXIT_CODE=${PIPESTATUS[0]}
 
 echo "exit => $EXIT_CODE"
 
@@ -75,16 +68,23 @@ if [ -f "$LUACHECK_CAPTURE_OUTFILE" ]; then
 
   CLEAN_FILE="$RUNNER_TEMP/luacheck_clean.txt"
 
-  # Strip ANSI color codes
+  # Strip ANSI codes
   sed -r "s/\x1B\[[0-9;]*[mK]//g" "$LUACHECK_CAPTURE_OUTFILE" > "$CLEAN_FILE"
 
   # ----------------------------------------
-  # Extract summary safely
+  # Extract summary (robust)
   # ----------------------------------------
-  SUMMARY=$(grep -E "^Total:" "$CLEAN_FILE" || true)
+  SUMMARY=$(grep "Total:" "$CLEAN_FILE" | tail -n 1 || true)
 
-  WARNINGS=$(echo "$SUMMARY" | awk '{print $2}')
-  ERRORS=$(echo "$SUMMARY" | awk '{print $5}')
+  echo "Raw summary => $SUMMARY"
+
+  if [ ! -z "$SUMMARY" ]; then
+    WARNINGS=$(echo "$SUMMARY" | sed -E 's/.*Total: ([0-9]+) warnings.*/\1/')
+    ERRORS=$(echo "$SUMMARY" | sed -E 's/.*\/ ([0-9]+) error.*/\1/')
+  else
+    WARNINGS=0
+    ERRORS=0
+  fi
 
   WARNINGS=${WARNINGS:-0}
   ERRORS=${ERRORS:-0}
