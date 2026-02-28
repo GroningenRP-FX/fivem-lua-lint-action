@@ -68,16 +68,33 @@ fi
 echo "exit => $EXIT_CODE"
 
 # ----------------------------------------
-# Repeat error blocks from captured output
+# Process captured output
 # ----------------------------------------
 
 if [ -f "$LUACHECK_CAPTURE_OUTFILE" ]; then
 
   CLEAN_FILE="$RUNNER_TEMP/luacheck_clean.txt"
 
-  # Strip ANSI color codes safely
+  # Strip ANSI color codes
   sed -r "s/\x1B\[[0-9;]*[mK]//g" "$LUACHECK_CAPTURE_OUTFILE" > "$CLEAN_FILE"
 
+  # ----------------------------------------
+  # Extract summary safely
+  # ----------------------------------------
+  SUMMARY=$(grep -E "^Total:" "$CLEAN_FILE" || true)
+
+  WARNINGS=$(echo "$SUMMARY" | awk '{print $2}')
+  ERRORS=$(echo "$SUMMARY" | awk '{print $5}')
+
+  WARNINGS=${WARNINGS:-0}
+  ERRORS=${ERRORS:-0}
+
+  echo "Detected warnings => $WARNINGS"
+  echo "Detected errors   => $ERRORS"
+
+  # ----------------------------------------
+  # Repeat error blocks (max 20 lines per file)
+  # ----------------------------------------
   ERROR_BLOCKS=$(awk '
   /^Checking .* [0-9]+ error(s)?$/ {
       capture=1
