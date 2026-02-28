@@ -61,6 +61,10 @@ echo "exit => $EXIT_CODE"
 # ----------------------------------------
 
 if [ -f "$LUACHECK_CAPTURE_OUTFILE" ]; then
+
+  # Strip ANSI color codes first
+  sed -r "s/\x1B\[[0-9;]*[mK]//g" "$LUACHECK_CAPTURE_OUTFILE" > clean.txt
+
   ERROR_BLOCKS=$(awk '
   /^Checking .* [0-9]+ error$/ {
       capture=1
@@ -79,7 +83,7 @@ if [ -f "$LUACHECK_CAPTURE_OUTFILE" ]; then
           lines++
       }
   }
-  ' "$LUACHECK_CAPTURE_OUTFILE")
+  ' clean.txt)
 
   if [ ! -z "$ERROR_BLOCKS" ]; then
       echo ""
