@@ -1,4 +1,4 @@
-#!/bin/sh -l
+#!/usr/bin/env bash
 
 set -o pipefail
 
@@ -19,7 +19,7 @@ echo "outfile => $LUACHECK_CAPTURE_OUTFILE"
 # ----------------------------------------
 # Extra luacheck definitions (optional)
 # ----------------------------------------
-if [ ! -z "$6" ]; then
+if [ -n "$6" ]; then
   OLD_DIR=$(pwd)
   cd /luacheck-fivem/ || exit 1
   yarn build "$6"
@@ -48,7 +48,7 @@ fi
 # ----------------------------------------
 
 # ----------------------------------------
-# Run luacheck ONCE (capture + console identical)
+# Run luacheck ONCE (console + file identical)
 # ----------------------------------------
 
 echo "Running luacheck..."
@@ -68,17 +68,15 @@ if [ -f "$LUACHECK_CAPTURE_OUTFILE" ]; then
 
   CLEAN_FILE="$RUNNER_TEMP/luacheck_clean.txt"
 
-  # Strip ANSI codes
+  # Strip ANSI color codes
   sed -r "s/\x1B\[[0-9;]*[mK]//g" "$LUACHECK_CAPTURE_OUTFILE" > "$CLEAN_FILE"
 
-  # ----------------------------------------
-  # Extract summary (robust)
-  # ----------------------------------------
+  # Extract summary safely
   SUMMARY=$(grep "Total:" "$CLEAN_FILE" | tail -n 1 || true)
 
   echo "Raw summary => $SUMMARY"
 
-  if [ ! -z "$SUMMARY" ]; then
+  if [ -n "$SUMMARY" ]; then
     WARNINGS=$(echo "$SUMMARY" | sed -E 's/.*Total: ([0-9]+) warnings.*/\1/')
     ERRORS=$(echo "$SUMMARY" | sed -E 's/.*\/ ([0-9]+) error.*/\1/')
   else
@@ -96,27 +94,27 @@ if [ -f "$LUACHECK_CAPTURE_OUTFILE" ]; then
   # Repeat error blocks (max 20 lines per file)
   # ----------------------------------------
   ERROR_BLOCKS=$(awk '
-/^Checking .* [0-9]+ error/ {
-    if (capture) print ""
-    capture=1
-    lines=0
-    print
-    next
-}
+  /^Checking .* [0-9]+ error/ {
+      if (capture) print ""
+      capture=1
+      lines=0
+      print
+      next
+  }
 
-/^Checking/ {
-    capture=0
-}
+  /^Checking/ {
+      capture=0
+  }
 
-capture {
-    if (lines < 20) {
-        print
-        lines++
-    }
-}
-' "$CLEAN_FILE")
+  capture {
+      if (lines < 20) {
+          print
+          lines++
+      }
+  }
+  ' "$CLEAN_FILE")
 
-  if [ ! -z "$ERROR_BLOCKS" ]; then
+  if [ -n "$ERROR_BLOCKS" ]; then
       echo ""
       echo "----------------------------------------"
       echo "$ERROR_BLOCKS"
