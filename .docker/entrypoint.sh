@@ -14,13 +14,14 @@ echo "outfile => $LUACHECK_CAPTURE_OUTFILE"
 # ----------------------------------------
 echo "Filtering FXAP encrypted files..."
 
+VALID_FILES=""
+
 if [ "$LUACHECK_PATH" = "." ]; then
   FILES=$(find . -name "*.lua" -type f)
 else
-  FILES=$(echo "$LUACHECK_PATH" | tr ' ' '\n')
+  FILES="$LUACHECK_PATH"
 fi
 
-VALID_FILES=""
 for file in $FILES; do
   if [ ! -f "$file" ]; then
     continue
@@ -32,10 +33,9 @@ for file in $FILES; do
   fi
 done
 
-LUACHECK_PATH="$VALID_FILES"
 # ----------------------------------------
 echo "Running luacheck..."
-luacheck --operators "+=" $LUACHECK_ARGS --formatter default $LUACHECK_PATH \
+luacheck --operators "+=" $LUACHECK_ARGS --formatter default $VALID_FILES \
   > "$LUACHECK_CAPTURE_OUTFILE" 2>&1
 EXIT_CODE=$?
 cat "$LUACHECK_CAPTURE_OUTFILE"
